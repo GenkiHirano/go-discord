@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 
 	"github.com/bwmarrin/discordgo"
@@ -19,7 +18,7 @@ func main() {
 
 	discord, err := discordgo.New(discordToken)
 	if err != nil {
-		fmt.Println("error: ", err)
+		fmt.Println("discordgo.New error: ", err)
 		return
 	}
 
@@ -28,7 +27,7 @@ func main() {
 	//イベントハンドラを追加
 	discord.AddHandler(onMessageCreate)
 	if err := discord.Open(); err != nil {
-		fmt.Println(err)
+		fmt.Println("discord.Open error: ", err)
 		return
 	}
 
@@ -36,10 +35,10 @@ func main() {
 	defer discord.Close()
 
 	fmt.Println("Listening...")
+
 	stopBot := make(chan os.Signal, 1)
-	signal.Notify(stopBot, syscall.SIGINT, syscall.SIGTERM, os.Interrupt, os.Kill)
+	signal.Notify(stopBot, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)
 	<-stopBot
-	return
 }
 
 func onMessageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
@@ -48,47 +47,7 @@ func onMessageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		return
 	}
 
-	guildID := m.GuildID
-	fmt.Println("guildID: ", guildID)
-
-	// 特定のチャンネルのメッセージのみ処理
-	// if m.ChannelID != "1295696391758286872" {
-	// 	return
-	// }
-
-	// メンション対象のユーザーIDを設定
-	// TODO: これをDBに格納する
-	targetUserID := "1235248265276948505"
-
-	for _, mention := range m.Mentions {
-		fmt.Println("mentionID: ", mention.ID)
-		fmt.Println("mentionName: ", mention.Username)
+	if _, err := s.ChannelMessageSendReply(m.ChannelID, "こんにちは！", m.Reference()); err != nil {
+		fmt.Println("discordgo.Session.ChannelMessageSendReply error: ", err)
 	}
-
-	// メッセージ内容に特定のメンションが含まれるか確認
-	if containsMention(m.Content, targetUserID) {
-		// メッセージへの返信
-		sendReply(s, m.ChannelID, "こんにちは！", m.Reference())
-	}
-}
-
-func sendMessage(s *discordgo.Session, channelID string, msg string) {
-	if _, err := s.ChannelMessageSend(channelID, msg); err != nil {
-		fmt.Println("error: ", err)
-	}
-}
-
-func sendReply(s *discordgo.Session, channelID string, msg string, reference *discordgo.MessageReference) {
-	if _, err := s.ChannelMessageSendReply(channelID, msg, reference); err != nil {
-		fmt.Println("error: ", err)
-	}
-}
-
-// メッセージ内容に特定のユーザーへのメンションが含まれているか確認する関数
-func containsMention(content string, userID string) bool {
-	// メンションの形式を作成
-	mention1 := "<@" + userID + ">"
-	mention2 := "<@!" + userID + ">"
-
-	return strings.Contains(content, mention1) || strings.Contains(content, mention2)
 }
